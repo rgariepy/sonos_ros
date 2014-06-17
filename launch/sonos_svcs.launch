@@ -1,5 +1,5 @@
 <launch>
 
-  <node name="sonos" pkg="sonos_ros" type="sonos_ros.py" output="screen"/>
+  <node name="sonos" pkg="sonos_ros" type="sonos.py" output="screen"/>
 
 </launch>
