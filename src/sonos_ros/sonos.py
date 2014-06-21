@@ -32,12 +32,39 @@ class sonos_ros:
         # TODO: Automate service creation, if possible
         rospy.Service("~play", Empty, self.play)
         rospy.Service("~pause", Empty, self.pause)
-        rospy.Service("~copy", TwoZone, self.copy_music)
-        rospy.Service("~move", TwoZone, self.move_music)
+        rospy.Service("~party", OneArg, self.party)
+        rospy.Service("~unparty", Empty, self.unparty)
+        rospy.Service("~copy", TwoArg, self.copy_music)
+        rospy.Service("~move", TwoArg, self.move_music)
 
         r = rospy.Rate(10.0)
         while not rospy.is_shutdown():
             r.sleep()
+
+    def party(self, req):
+        # TODO: Better acknowledgement
+        # In SONOS-land, we are joining the destination speaker to the origin
+        # (for all destination speakers)
+        from_zone = req.zone
+        rospy.loginfo("Starting party mode based on %s", from_zone)
+        try:
+            master_uid = self.speakers_[from_zone].get_speaker_info()["uid"] 
+            for speaker in self.speakers_.values():
+                if speaker.player_name == from_zone:
+                    continue
+                speaker.join(master_uid)
+            # We're finished. Play.
+            self.speakers_[from_zone].play()
+        except KeyError as e:
+            rospy.logwarn(e)
+        return OneArgResponse()
+
+    def unparty(self, req):
+        # TODO: Better acknowledgement
+        # The default behaviour when speakers are unjoined is to pause
+        for speaker in self.speakers_.values():
+            speaker.unjoin()
+        return EmptyResponse()
 
     def copy_music(self, req):
         """When given two strings, mirror music played on the first
@@ -52,7 +79,7 @@ class sonos_ros:
             self.speakers_[to_zone].join(master_uid)
         except KeyError as e:
             rospy.logwarn(e)
-        return TwoZoneResponse()
+        return TwoArgResponse()
 
     def move_music(self, req):
         """When given two strings, move music played on the first
@@ -68,7 +95,7 @@ class sonos_ros:
             self.speakers_[from_zone].unjoin()
         except KeyError as e:
             rospy.logwarn(e)
-        return TwoZoneResponse()
+        return TwoArgResponse()
     
     def play(self, req):
         # TODO: Better acknowledgement
